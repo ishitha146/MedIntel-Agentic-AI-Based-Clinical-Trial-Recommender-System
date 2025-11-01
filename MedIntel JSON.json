@@ -176,8 +176,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1728,
-        208
+        1920,
+        256
       ],
       "id": "53e158b1-7ba5-4866-949b-790655193b43",
       "name": "Send email",
@@ -234,7 +234,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        160,
+        208,
         96
       ],
       "id": "ed0abbcf-fc40-41d4-8dc5-eb6f464c53e2",
@@ -256,8 +256,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1744,
-        528
+        1920,
+        544
       ],
       "id": "ea889bc7-599b-4427-aea4-ac36632248b1",
       "name": "No Operation, do nothing2"
@@ -707,7 +707,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1728,
+        1920,
         -64
       ],
       "id": "a7edf54e-293a-4585-8607-364f333856d2",
@@ -718,6 +718,215 @@
           "name": "Google Sheets account"
         }
       }
+    },
+    {
+      "parameters": {
+        "content": "This is the manual trigger node used to start the execution of the entire workflow. It allows the user to manually begin the automation by clicking Execute Workflow in n8n.",
+        "height": 240,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -902,
+        96
+      ],
+      "typeVersion": 1,
+      "id": "0499b49a-1161-4565-86b4-fec45b3c6ded",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "This node reads patient records from a Google Sheet that contains structured information such as: Patient ID, Name, Age, Sex, Condition, Stage, Biomarkers, Prior Treatments, ECOG, City, Country, Doctor details, and other relevant notes. It acts as the entry point for patient data into the workflow.",
+        "height": 368,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -688,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "e8a7e424-8236-484f-a0dd-1842b7e16411",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "This is a filtering (IF) node that ensures only valid or active patients are processed. For example, it checks whether a Patient ID or condition is available. Patients with incomplete or invalid data are routed to a “No Operation” node for a clean exit.",
+        "height": 352,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -464,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "45f6dfc9-eacb-401d-9071-44e933584639",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "This node organizes and formats the patient details retrieved from the sheet. It standardizes the data structure so that the next nodes can process it consistently when making API calls or preparing AI inputs.",
+        "height": 304,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -240,
+        -96
+      ],
+      "typeVersion": 1,
+      "id": "f77cc62b-5c86-49df-afc0-390562c30273",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "This Loop Over Items node processes each patient individually, ensuring that all operations — from fetching trials to sending emails — are executed one at a time per patient. It prevents data overlap and maintains a logical flow of execution.",
+        "height": 304,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -32,
+        -96
+      ],
+      "typeVersion": 1,
+      "id": "67e72ae2-6497-4e6b-88ee-f30d19f9e043",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "This node maintains continuity by carrying the patient’s information forward through the loop. It ensures that even after multiple operations, the patient’s data is available for reference during trial processing.",
+        "height": 304,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        144,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "8f1c2255-a7b6-404b-9393-c74bc59ef48d",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "This node makes an HTTP request to ClinicalTrials.gov, a global database of ongoing and completed clinical studies. It fetches trials related to the patient’s specific condition, disease, or biomarkers.",
+        "height": 256,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "cc4c8d3f-ffaf-46a1-8803-b41212e682b3",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "The Split Out node takes the list of trials fetched from the API and separates them into individual items. This allows each trial to be analyzed independently in the following steps, enabling the AI to assess compatibility per trial.",
+        "height": 304,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        576,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "c8a3723d-45a2-4fad-bb8c-cb6598972fd9",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "This node extracts important information from each trial’s dataset such as:\n\nTrial title and description\nStudy phase (I, II, III, etc.)\nLocation\nStatus\nConditions being studied\nNCT ID (unique trial identifier)\nThe extracted details are used to prepare a summarized version for the AI comparison process.",
+        "height": 448,
+        "width": 160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "16ac47c3-6637-4d1a-bfa5-fe71590151d3",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "This is the AI reasoning core of the workflow. The node connects to an OpenAI-compatible model (via OpenRouter) to evaluate the compatibility between the patient’s condition and each clinical trial. The model receives structured details about the patient and the trial and outputs a result in JSON format that includes:\n\nA match score (0–100)\nA short summary explaining the reasoning behind the score\nThis step transforms raw data into intelligent analysis using agentic AI reasoning.",
+        "height": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1008,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "699bfa95-fc1e-4e58-a695-f21e2d8e69d4",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "This node extracts the AI model’s response and cleans it. It isolates the match score and summary fields from the JSON response. This ensures that subsequent nodes can use numeric match scores for filtering without errors.",
+        "height": 304,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1312,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "c03c02fb-1c75-464a-9009-52e630b07897",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "This conditional logic node filters out trials that have a match score below the defined threshold (for example, 75%).\n\nIf the score is above or equal to the threshold, it is considered a potential match.\nIf it’s below, the trial is ignored and routed to a “No Operation” node for a clean exit.\nThis ensures that only the most promising trials are forwarded to the notification step.",
+        "height": 480,
+        "width": 150
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1536,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "8ed3c9e0-c7c0-4c84-af04-1abb6052dd05",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "This node sends an automated email to the doctor associated with the patient. The email includes:\n\nThe patient’s name and condition\nTrial title and details\nMatch score and summary of the AI’s reasoning\nA direct link to the ClinicalTrials.gov trial page\nThis transforms the AI’s analysis into immediate actionable information for the medical team",
+        "height": 192,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2112,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "437ceb91-0411-41d3-b709-40f3ffcf3581",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "This node records the final results of successful matches into a separate Google Sheet. Whenever a patient–trial match has a high score (≥75), it automatically appends a new row containing the patient details, trial title, match score, summary, and timestamp. This creates a complete log of all matches found by the workflow for future reference or analysis.",
+        "height": 176,
+        "width": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2112,
+        -96
+      ],
+      "typeVersion": 1,
+      "id": "2c1c169c-c4f3-4e93-a589-5ba3f0da46cc",
+      "name": "Sticky Note13"
     }
   ],
   "pinData": {},
@@ -896,7 +1105,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "d8b96567-3389-492a-8e7f-565ae8a8dbac",
+  "versionId": "ce366fb2-5647-4458-8358-b60c40b53baf",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f7510ebd2dba00e7c9203a2a55f248c08a0e17dae893755e193d931d4aff1abf"
