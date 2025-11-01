@@ -158,6 +158,15 @@ This transforms the AI’s analysis into immediate actionable information for th
 This node is connected to branches that do not need further processing.
 It acts as a termination point, ensuring that incomplete or unmatched cases end gracefully without affecting other workflow executions.
 
+### **15 Appen row in sheet**
+
+This node records the final results of successful matches into a separate Google Sheet.
+Whenever a patient–trial match has a high score (≥75), it automatically appends a new row containing the patient details, trial title, match score, summary, and timestamp.
+This creates a complete log of all matches found by the workflow for future reference or analysis.
+
+## 🔁 Flow Diagram
+<img width="812" height="322" alt="image" src="https://github.com/user-attachments/assets/8bf53cbd-3834-4a51-a4f5-a6a8d3a00a74" />
+
 
 ## 🧠 How the AI Makes Decisions
 
@@ -180,6 +189,9 @@ When a patient–trial match exceeds the defined threshold:
 * The doctor receives an **email notification** summarizing the trial and score.
 * Trials with lower scores are ignored.
 * Each execution cycle ensures the doctor only receives meaningful updates.
+* High-match trials are automatically emailed to the respective doctor.
+* The same trial details, including patient info, match score, and AI summary, are appended to a MatchedTrials Google Sheet for record-keeping.
+* This sheet acts as a history log that can be used for further analysis or to avoid re-processing already matched patients.
 
 
 ## 🧩 Workflow Summary
@@ -192,6 +204,7 @@ When a patient–trial match exceeds the defined threshold:
 | AI Analysis      | Scores trials using reasoning-based LLM  |
 | Result Filtering | Retains trials above threshold           |
 | Communication    | Sends alert emails to doctors            |
+|Data Logging      |Apends hight match results to a separate google sheet for tracking|
 
 
 ## 🔒 Error Handling & Stability
@@ -205,7 +218,6 @@ When a patient–trial match exceeds the defined threshold:
 ## 📈 Future Enhancements
 
 * **Automatic Daily Scheduling:** Add a cron trigger to run the workflow automatically each morning.
-* **Google Sheet Output Logging:** Write all successful matches to a second sheet for reporting.
 * **Multi-Agent Extension:** Add a validation agent to recheck AI decisions.
 * **Integration with Hospital EMR:** Directly sync patient data from electronic medical records.
 * **WhatsApp Notification:** Parallel message alerts for faster doctor communication.
@@ -213,10 +225,9 @@ When a patient–trial match exceeds the defined threshold:
 
 ## 🏁 Conclusion
 
-**MedIntel** successfully combines automation, data integration, and intelligent reasoning to solve a critical challenge in modern healthcare.
-By blending structured workflows with autonomous AI capabilities, it reduces manual effort and accelerates clinical trial discovery — saving time and potentially improving patient outcomes.
-
-This project represents the future of **Agentic AI in medicine** — systems that think, act, and assist professionals in making data-driven decisions automatically.
+**MedIntel** successfully demonstrates how Agentic AI can combine automation, reasoning, and communication to solve real healthcare challenges.
+The system autonomously reads patient data, discovers global clinical trials, evaluates compatibility using AI, alerts doctors with high-match recommendations, and now also logs every successful match into a separate Google Sheet for record-keeping.
+By integrating data processing, intelligent decision-making, and result tracking in a single workflow, MedIntel moves closer to practical, AI-assisted precision medicine — giving doctors and patients faster access to potential life-saving treatments.
 
 
 
