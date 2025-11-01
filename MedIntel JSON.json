@@ -1,0 +1,906 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8adf3965-317e-4804-bc7c-5578c5d8f630",
+              "name": "q_terms",
+              "value": "={{ [ $json[\"Condition\"], $json[\"Stage\"], $json[\"Biomarkers\"], $json[\"PriorTreatments\"] ]     .filter(v => v && v !== '-' && v !== 'N/A')     .join(' ') }}",
+              "type": "string"
+            },
+            {
+              "id": "63b63422-c66a-44a7-a6fd-7d07213dbea2",
+              "name": "patient_id",
+              "value": "={{ $json[\"PatientID\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        160,
+        384
+      ],
+      "id": "87cc44ee-236f-407c-a053-9051f10f5f18",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a clinical-trial matcher. Score how well the TRIAL fits the PATIENT using this rubric and return ONLY JSON.\n\nRUBRIC (0–100 total):\n- Condition match (exact/very close): +40\n- Biomarker/target match (e.g., gene/receptor): +30\n- Stage & prior therapy plausibly eligible: +15\n- Geography plausible (any site in patient’s country OR remote): +10\n- Age/ECOG typical for trial: +5\n\nImportant:\n- Never default to 0 unless it’s the wrong disease or explicitly excluded.\n- If info is incomplete but likely compatible, estimate 60–75.\n- Output must be ONLY valid JSON (no backticks, no prose, no markdown).\n\nPATIENT:\n{{patient_profile}}\n\nTRIAL:\n{{trial_brief}}\n\nReturn ONLY this JSON:\n{\"match_score\": <integer 0-100>, \"summary\": \"<one short sentence>\"}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1024,
+        384
+      ],
+      "id": "9fc87a0f-0a11-40bc-afc1-d9f38a511493",
+      "name": "Basic LLM Chain",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "google/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "google/gemini-2.5-flash"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        560
+      ],
+      "id": "5eed468c-ecfc-4a6d-91ee-ae5b6492690f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "7z8o1WVbWSeV19Ar",
+          "name": "OpenAi account 7"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a6f083c9-8b0c-49d0-84da-4ab8f39f950c",
+              "name": "=match_score",
+              "value": "={{ (() => {\n  const raw = String($json.text || '').replace(/```json|```/g, '').trim();\n  try {\n    const parsed = JSON.parse(raw);\n    const n = Number(parsed.match_score);\n    return Number.isFinite(n) ? n : 0;\n  } catch (e) {\n    return 0;\n  }\n})() }}\n",
+              "type": "number"
+            },
+            {
+              "id": "0a90c0a2-2bb6-4f59-899c-7da553370d26",
+              "name": "=summary",
+              "value": "={{ (() => {\n  const raw = String($json.text || '').replace(/```json|```/g, '').trim();\n  try {\n    const parsed = JSON.parse(raw);\n    return parsed.summary || 'No summary';\n  } catch (e) {\n    return 'No summary';\n  }\n})() }}\n",
+              "type": "string"
+            },
+            {
+              "id": "1c643a2d-3214-42b3-a7ab-087b67f046f3",
+              "name": "=nctId",
+              "value": "={{ $items(\"edit fields 2\")[$itemIndex].json.protocolSection?.identificationModule?.nctId\n   || $items(\"split trials\")[$itemIndex].json.protocolSection?.identificationModule?.nctId }}\n",
+              "type": "string"
+            },
+            {
+              "id": "ee7189b4-c6d5-411d-80dd-52ff8fbe6dda",
+              "name": "trialTitle",
+              "value": "={{ $items(\"edit fields 2\")[$itemIndex].json.protocolSection?.identificationModule?.officialTitle\n   || $items(\"edit fields 2\")[$itemIndex].json.protocolSection?.identificationModule?.briefTitle\n   || $items(\"split trials\")[$itemIndex].json.protocolSection?.identificationModule?.officialTitle\n   || $items(\"split trials\")[$itemIndex].json.protocolSection?.identificationModule?.briefTitle }}\n",
+              "type": "string"
+            },
+            {
+              "id": "6b2a7012-8a11-4a2b-a576-ded6d818666c",
+              "name": "=phases",
+              "value": "={{ ($items(\"edit fields 2\")[$itemIndex].json.protocolSection?.designModule?.phases\n    || $items(\"split trials\")[$itemIndex].json.protocolSection?.designModule?.phases || []).join(\", \") }}\n",
+              "type": "string"
+            },
+            {
+              "id": "63284ddc-fa25-4335-b2f4-b90aabeb144f",
+              "name": "=locations",
+              "value": "={{ (($items(\"edit fields 2\")[$itemIndex].json.protocolSection?.contactsLocationsModule?.locations\n     || $items(\"split trials\")[$itemIndex].json.protocolSection?.contactsLocationsModule?.locations || [])\n     .slice(0,5)\n     .map(l => [l.facility,l.city,l.country].filter(Boolean).join(\", \"))\n     .join(\"; \")) || \"N/A\" }}\n",
+              "type": "string"
+            },
+            {
+              "id": "f83bdbc8-37ae-4b69-8a7a-e5407b6a5f45",
+              "name": "raw_text",
+              "value": "={{    ($json.text)   ?? ($json.completion)   ?? ($json.raw)   ?? ($json.output)   ?? ($json.data && $json.data[0] && $json.data[0].text)   ?? ($json.choices && $json.choices[0] && ($json.choices[0].message?.content || $json.choices[0].text))   ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        384
+      ],
+      "id": "0556fb79-6ca0-4358-b6f7-22f6246ca8a7",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e9b1d775-78cc-4064-b674-e31ea643ba34",
+              "leftValue": "={{ Number(($json.match_score ?? '0').toString().trim()) }}\n",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        384
+      ],
+      "id": "c9cc98fa-b800-4903-8660-52910bb32f46",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "fromEmail": "alluruishitha@gmail.com",
+        "toEmail": "={{ $('edit fields').item.json['Doctor Email'] }}",
+        "subject": "=Trial match ({{ $json.match_score }}%) — {{ $json.trialTitle || \"Clinical trial\" }}",
+        "html": "=<p><strong>🎯 New Trial Match ({{ $json.match_score }}%)</strong></p>\n\n<p><strong>Patient:</stron{{ $('edit fields').item.json.Name }}g>  (ID:{{ $('edit fields').item.json.PatientID }} )<br/>\n<strong>Condition:</strong>{{ $('edit fields').item.json.Condition }} <br/>\n<strong>Biomarkers:</strong> {{ $('edit fields').item.json.Biomarkers }}<br/>\n<strong>ECOG:{{ $('edit fields').item.json.ECOG }}</strong></p>\n\n<p><strong>Trial:</strong> {{ $json.trialTitle || \"—\" }}<br/>\n<strong>Phase:</strong> {{ $json.phases || \"—\" }}<br/>\n<strong>NCT ID:</strong> {{ $json.nctId || \"—\" }}<br/>\n<strong>Link:</strong> \n<a href=\"https://clinicaltrials.gov/study/{{ $json.nctId }}\">clinicaltrials.gov/study/{{ $json.nctId }}</a><br/>\n<strong>Locations:</strong> {{ $json.locations || \"—\" }}</p>\n\n<p><strong>Why this match:</strong> {{ $json.summary || \"—\" }}</p>\n\n<hr/>\n<p style=\"font-size:12px;color:#666;\">\nThreshold used: ≥ 75<br/>\nAutomated MedIntel Notification.\n</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1728,
+        208
+      ],
+      "id": "53e158b1-7ba5-4866-949b-790655193b43",
+      "name": "Send email",
+      "webhookId": "1eed28b2-6496-4995-9e35-8442ad911d28",
+      "credentials": {
+        "smtp": {
+          "id": "y42HTtQEfaLe9gTG",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        352
+      ],
+      "id": "b7cdf683-26f4-4d10-8a41-feaf677b5076",
+      "name": "start workflow"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1EIUnTPeFgwNjrhThiTuO9R1GgQvCmdW5KmCPUJtjme0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "0",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -640,
+        352
+      ],
+      "id": "3a5b62b5-e28f-4f1f-a334-27436c674459",
+      "name": "fetch patient data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VD7SjnjcAcbt9WDm",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        160,
+        96
+      ],
+      "id": "ed0abbcf-fc40-41d4-8dc5-eb6f464c53e2",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        480
+      ],
+      "id": "58697d08-cd47-44c9-9d51-5bcfae6fed4f",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        528
+      ],
+      "id": "ea889bc7-599b-4427-aea4-ac36632248b1",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "17e6ec6b-ee00-42d0-a306-73d1e9bb2285",
+              "leftValue": "={{ $json[\"PatientID\"] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4a59c3fe-b9ad-427b-8de9-4efbaa00f5ba",
+              "leftValue": "{{ $json[\"PatientID\"] }}",
+              "rightValue": "PatientID",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -432,
+        352
+      ],
+      "id": "867ba1e6-1d35-4d1b-bd34-b221d808b451",
+      "name": "check active patients"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        224
+      ],
+      "id": "9af00aab-025e-4cda-9faa-89359d1b54b2",
+      "name": "loop through patients"
+    },
+    {
+      "parameters": {
+        "url": "https://clinicaltrials.gov/api/v2/studies",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query.term",
+              "value": "=={{ $json[\"q_terms\"] }}"
+            },
+            {
+              "name": "pageSize",
+              "value": "2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        384,
+        384
+      ],
+      "id": "3ff11a8e-05b1-4986-aac6-e65edb5fac4b",
+      "name": "fetch trials"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "studies",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        592,
+        384
+      ],
+      "id": "475fe117-c761-4fd6-bfc3-67db678820b9",
+      "name": "split trials"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1eeb6382-6c09-4ae9-812f-6eeaea4e684b",
+              "name": "PatientID",
+              "value": "={{ $json[\"PatientID\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "2bf6a74d-1448-4048-8974-a55c04c9da70",
+              "name": "Name",
+              "value": "={{ $json[\"Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "c5c4f473-1a9b-4e96-83e7-2676f2284a63",
+              "name": "Age",
+              "value": "={{ $json[\"Age\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "7b26b57f-879c-4496-9b92-d2026607e9a0",
+              "name": "Sex",
+              "value": "={{ $json[\"Sex\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "e44c77c1-6922-455e-a026-4afed6b8ab39",
+              "name": "Condition",
+              "value": "={{ $json[\"Condition\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "7f13ea85-35f3-42da-a2d1-024b6af24c0d",
+              "name": "Stage",
+              "value": "={{ $json[\"Stage\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "14b3d323-9c6b-442f-ae54-11cdabb00fc3",
+              "name": "Biomarkers",
+              "value": "={{ $json[\"Biomarkers\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "bfb1df79-9d2e-497d-a0a7-40e79748da09",
+              "name": "PriorTreatments",
+              "value": "={{ $json[\"PriorTreatments\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "3216dad9-23cd-4389-8095-4cf9e1ebc8ce",
+              "name": "ECOG",
+              "value": "={{ $json[\"ECOG\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "9e62e928-fd2c-4af4-80d3-f4ef2358b9b1",
+              "name": "City",
+              "value": "={{ $json[\"City\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "18b98a17-c481-47ad-bbc3-bdc46967b639",
+              "name": "Country",
+              "value": "={{ $json[\"Country\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "dc321f59-a2f4-4d18-a70b-b5fd5f8ec803",
+              "name": "DoctorName",
+              "value": "={{ $json[\"DoctorName\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "538fd783-4b36-4625-b933-f868d5ac2316",
+              "name": "Notes",
+              "value": "={{ $json[\"Notes\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "d6a3f5c6-d67f-4c2e-9682-fe67b3d056a8",
+              "name": "DoctorWhatsApp",
+              "value": "={{ $json[\"DoctorWhatsApp\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "a414cde9-1c2a-412d-b9ac-5bd51e8d28bb",
+              "name": "Doctor Email",
+              "value": "={{ $json['Doctor Email'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        224
+      ],
+      "id": "eb6c8ba6-6b7b-449e-a2f0-91d1f930b6d5",
+      "name": "edit fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3da12867-dc5a-42f9-aaa2-d5d68d22ca55",
+              "name": "protocolSection.identificationModule.nctId",
+              "value": "={{ $json.protocolSection.identificationModule.nctId }}",
+              "type": "string"
+            },
+            {
+              "id": "2889d9e4-e1f9-4c26-b717-241ac65b2cc9",
+              "name": "trialTitle",
+              "value": "={{ $json.protocolSection?.identificationModule?.officialTitle || $json.protocolSection?.identificationModule?.briefTitle }}",
+              "type": "string"
+            },
+            {
+              "id": "07de05f6-5f02-4a14-8b85-cb48043c0139",
+              "name": "phases",
+              "value": "={{ ($json.protocolSection?.designModule?.phases || []).join(\", \") }}",
+              "type": "string"
+            },
+            {
+              "id": "8908963c-be27-472a-8da1-f76346fcc956",
+              "name": "conditions",
+              "value": "={{ ($json.protocolSection?.conditionsModule?.conditions || []).join(\", \") }}",
+              "type": "string"
+            },
+            {
+              "id": "d0277e8e-9846-406d-ac13-b792e8b359e7",
+              "name": "eligibility",
+              "value": "={{ $json.protocolSection?.eligibilityModule?.eligibilityCriteria || \"Not provided\" }}",
+              "type": "string"
+            },
+            {
+              "id": "90a98c04-d8b7-4b1f-bf1c-0c9156378647",
+              "name": "biomarkerKeywords",
+              "value": "={{ ($json.protocolSection?.conditionsModule?.keywords || []).slice(0,10).join(\", \") }}",
+              "type": "string"
+            },
+            {
+              "id": "e228b6bc-a041-4a51-aae3-cf77dbda68c1",
+              "name": "locations",
+              "value": "={{    (($json.protocolSection?.contactsLocationsModule?.locations || [])     .slice(0,5)     .map(l => [l.facility, l.city, l.state, l.country].filter(Boolean).join(\", \"))     .join(\"; \")) || \"N/A\"  }}",
+              "type": "string"
+            },
+            {
+              "id": "0df758ea-0566-479e-9566-d3d9e1608e31",
+              "name": "trial_brief",
+              "value": "={{ `NCTID: ${$json[\"nctId\"] || $json.protocolSection?.identificationModule?.nctId || \"\"}\nTitle: ${$json[\"trialTitle\"] || $json.protocolSection?.identificationModule?.officialTitle || $json.protocolSection?.identificationModule?.briefTitle || \"\"}\nPhases: ${$json[\"phases\"] || ($json.protocolSection?.designModule?.phases || []).join(\", \")}\nLocations: ${$json[\"locations\"] || (\n  ($json.protocolSection?.contactsLocationsModule?.locations || [])\n   .slice(0,5)\n   .map(l => [l.facility,l.city,l.country].filter(Boolean).join(\", \")).join(\"; \")\n) || \"N/A\"}\n` }}\n",
+              "type": "string"
+            },
+            {
+              "id": "524e7f65-a14a-46d6-b93a-6a312c6ba5a2",
+              "name": "patient_profile",
+              "value": "={{ `PatientID: ${$json[\"PatientID\"] || \"\"}\nName: ${$json[\"Name\"] || \"\"}\nAge: ${$json[\"Age\"] || \"\"}\nSex: ${$json[\"Sex\"] || \"\"}\nCondition: ${$json[\"Condition\"] || \"\"}\nStage: ${$json[\"Stage\"] || \"-\"}\nBiomarkers: ${$json[\"Biomarkers\"] || \"-\"}\nPriorTreatments: ${$json[\"PriorTreatments\"] || \"-\"}\nECOG: ${$json[\"ECOG\"] || \"-\"}\nCity/Country: ${$json[\"City\"] || \"-\"}, ${$json[\"Country\"] || \"-\"}\n` }}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        384
+      ],
+      "id": "521a046a-e512-4317-af3f-94864decce83",
+      "name": "edit fields 2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EIUnTPeFgwNjrhThiTuO9R1GgQvCmdW5KmCPUJtjme0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "1949790517",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "PatientID": "={{ $('edit fields').item.json.PatientID }}",
+            "Name": "={{ $('edit fields').item.json.Name }}",
+            "Condition": "={{ $('edit fields').item.json.Condition }}",
+            "Stage": "={{ $('edit fields').item.json.Stage }}",
+            "Biomarkers": "={{ $('edit fields').item.json.Biomarkers }}",
+            "TrialTitle": "={{ $('edit fields 2').item.json.protocolSection.identificationModule.briefTitle }}",
+            "Phase": "={{ $json.phases }}",
+            "MatchScore": "={{ $json.match_score }}",
+            "Summary": "={{ $json.summary }}",
+            "DoctorWhatsApp": "={{ $('edit fields').item.json.DoctorWhatsApp }}",
+            "DoctorEmail": "={{ $('edit fields').item.json['Doctor Email'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "PatientID",
+              "displayName": "PatientID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Condition",
+              "displayName": "Condition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stage",
+              "displayName": "Stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Biomarkers",
+              "displayName": "Biomarkers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TrialTitle",
+              "displayName": "TrialTitle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phase",
+              "displayName": "Phase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MatchScore",
+              "displayName": "MatchScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "NCTUrl",
+              "displayName": "NCTUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Locations",
+              "displayName": "Locations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "DoctorName",
+              "displayName": "DoctorName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "DoctorWhatsApp",
+              "displayName": "DoctorWhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DoctorEmail",
+              "displayName": "DoctorEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        -64
+      ],
+      "id": "a7edf54e-293a-4585-8607-364f333856d2",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "VD7SjnjcAcbt9WDm",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "fetch trials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "start workflow": {
+      "main": [
+        [
+          {
+            "node": "fetch patient data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch patient data": {
+      "main": [
+        [
+          {
+            "node": "check active patients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check active patients": {
+      "main": [
+        [
+          {
+            "node": "edit fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "loop through patients": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch trials": {
+      "main": [
+        [
+          {
+            "node": "split trials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split trials": {
+      "main": [
+        [
+          {
+            "node": "edit fields 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit fields": {
+      "main": [
+        [
+          {
+            "node": "loop through patients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit fields 2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d8b96567-3389-492a-8e7f-565ae8a8dbac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f7510ebd2dba00e7c9203a2a55f248c08a0e17dae893755e193d931d4aff1abf"
+  },
+  "id": "tSikBrBshqN6yhSV",
+  "tags": []
+}
