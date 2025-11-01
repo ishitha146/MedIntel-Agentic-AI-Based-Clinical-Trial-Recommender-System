@@ -181,6 +181,116 @@ It considers factors such as:
 
 Each of these aspects contributes to a final **match score**, which helps prioritize the most relevant trials.
 
+## ⚙️ **Setup Steps (Before Running the Workflow)**
+
+Follow these steps to configure MedIntel correctly before you execute it for the first time:
+
+1. **Install n8n:**
+
+   * Run n8n inside Docker or locally on your system.
+   * Open n8n in your browser (default: `http://localhost:5678`).
+
+2. **Create the Required Google Sheets:**
+
+   * **Sheet 1 – PatientData:** contains all patient details.
+     Add headers:
+     `PatientID, Name, Age, Sex, Condition, Stage, Biomarkers, PriorTreatments, ECOG, City, Country, DoctorName, DoctorWhatsApp, DoctorEmail, Notes, LastCheckedISO`
+   * **Sheet 2 – MatchedTrials:** for storing AI results.
+     Add headers:
+     `Timestamp, PatientID, Name, Condition, TrialTitle, MatchScore, Summary, NCTID, DoctorEmail`
+
+3. **Set Up Credentials:**
+
+   * **Google Sheets:** connect your Google account from the *Credentials* section in n8n.
+   * **OpenAI/OpenRouter:**
+
+     * Get an API key from [https://openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
+     * Add it in n8n as “OpenAI API” credentials.
+     * Set Base URL to `https://openrouter.ai/api/v1`.
+   * **Gmail SMTP (for Send Email):**
+
+     * Go to your Google Account → Security → App Passwords.
+     * Generate a password for “Mail” → “n8n”.
+     * Use it in n8n under “SMTP Credentials”.
+
+4. **Import the Workflow:**
+
+   * In n8n, click **Import Workflow** → choose your saved JSON file (MedIntel_AgenticTrialMatcher.json).
+
+5. **Add API Configuration in HTTP Request Node:**
+
+   * Use the URL: `https://clinicaltrials.gov/api/v2/studies`
+   * Add query parameters:
+     `query.cond={{$json["Condition"]}}` and `pageSize=5`.
+
+6. **Set Up the Email Node:**
+
+   * Use the Gmail SMTP credentials created earlier.
+   * Enable “Send as HTML.”
+   * Paste the HTML message body (doctor alert template).
+
+7. **Add Google Sheets Append Node:**
+
+   * Under IF node’s **TRUE** branch, connect the Google Sheets → **Append** operation.
+   * Link it to the *MatchedTrials* sheet.
+
+8. **Save Workflow:**
+
+   * Give it a proper name (e.g., `MedIntel_AgenticTrialMatcher`).
+   * Click **Activate** to make it ready for testing.
+
+---
+
+## 🚀 **How to Use (Execution Steps)**
+
+Once everything is configured, follow these steps to run and test the MedIntel workflow:
+
+1. **Open n8n Dashboard:**
+
+   * Go to your workflow named *MedIntel_AgenticTrialMatcher*.
+
+2. **Add or Update Patient Details:**
+
+   * Enter new patient records in the **PatientData** sheet.
+   * Make sure “Condition” and “DoctorEmail” fields are filled.
+
+3. **Start Workflow Execution:**
+
+   * Click **Execute Workflow** on the “start workflow” node.
+   * n8n will automatically process each patient row one by one.
+
+4. **Trial Data Fetch:**
+
+   * The **fetch trials** node calls the ClinicalTrials API and retrieves trials related to each patient’s condition.
+
+5. **AI Analysis:**
+
+   * The **Basic LLM Chain** node sends patient and trial data to the AI model.
+   * The model scores each trial and explains the match in a short summary.
+
+6. **Filtering Matches:**
+
+   * The **If1** node checks whether the match score is above the threshold (75).
+   * If true → goes to Email + Append Sheet.
+   * If false → stops at “No Operation.”
+
+7. **Email Notification:**
+
+   * The **Send email** node automatically delivers formatted match details to the doctor’s email.
+
+8. **Logging in MatchedTrials Sheet:**
+
+   * Each high-match result is appended as a new row in your **MatchedTrials** sheet with timestamp, patient info, trial title, score, and summary.
+
+9. **Check Results:**
+
+   * Verify your Gmail inbox for alerts.
+   * Open the MatchedTrials sheet to confirm that the record was added.
+
+10. **Repeat Automatically:**
+
+    * You can later add a **Cron** node (e.g., daily 9 AM) to make this run automatically each day without manual execution.
+
 
 ## 📤 Output and Notifications
 
